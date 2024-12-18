@@ -4,8 +4,6 @@ import 'package:venera/foundation/app.dart';
 import 'package:venera/foundation/comic_source/comic_source.dart';
 import 'package:venera/foundation/comic_type.dart';
 import 'package:venera/foundation/history.dart';
-import 'package:venera/foundation/local.dart';
-import 'package:venera/utils/ext.dart';
 import 'package:venera/utils/translations.dart';
 
 class HistoryPage extends StatefulWidget {
@@ -78,33 +76,7 @@ class _HistoryPageState extends State<HistoryPage> {
             ],
           ),
           SliverGridComics(
-            comics: comics.map(
-              (e) {
-                var cover = e.cover;
-                if (!cover.isURL) {
-                  var localComic = LocalManager().find(
-                    e.id,
-                    e.type,
-                  );
-                  if(localComic != null) {
-                    cover = "file://${localComic.coverFile.path}";
-                  }
-                }
-                return Comic(
-                  e.title,
-                  cover,
-                  e.id,
-                  e.subtitle,
-                  null,
-                  getDescription(e),
-                  e.type == ComicType.local
-                      ? 'local'
-                      : e.type.comicSource?.key ?? "Unknown:${e.type.value}",
-                  null,
-                  null,
-                );
-              },
-            ).toList(),
+            comics: comics,
             badgeBuilder: (c) {
               return ComicSource.find(c.sourceKey)?.name;
             },

@@ -77,13 +77,13 @@ String? validateFolderName(String newFolderName) {
   return null;
 }
 
-void addFavorite(Comic comic) {
+void addFavorite(List<Comic> comics) {
   var folders = LocalFavoritesManager().folderNames;
 
   showDialog(
     context: App.rootContext,
     builder: (context) {
-      String? selectedFolder;
+      String? selectedFolder = appdata.settings['quickFavorite'];
 
       return StatefulBuilder(builder: (context, setState) {
         return ContentDialog(
@@ -105,19 +105,21 @@ void addFavorite(Comic comic) {
             FilledButton(
               onPressed: () {
                 if (selectedFolder != null) {
-                  LocalFavoritesManager().addComic(
-                    selectedFolder!,
-                    FavoriteItem(
-                      id: comic.id,
-                      name: comic.title,
-                      coverPath: comic.cover,
-                      author: comic.subtitle ?? '',
-                      type: ComicType((comic.sourceKey == 'local'
-                          ? 0
-                          : comic.sourceKey.hashCode)),
-                      tags: comic.tags ?? [],
-                    ),
-                  );
+                  for (var comic in comics) {
+                    LocalFavoritesManager().addComic(
+                      selectedFolder!,
+                      FavoriteItem(
+                        id: comic.id,
+                        name: comic.title,
+                        coverPath: comic.cover,
+                        author: comic.subtitle ?? '',
+                        type: ComicType((comic.sourceKey == 'local'
+                            ? 0
+                            : comic.sourceKey.hashCode)),
+                        tags: comic.tags ?? [],
+                      ),
+                    );
+                  }
                   context.pop();
                 }
               },

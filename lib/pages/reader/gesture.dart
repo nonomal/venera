@@ -103,6 +103,9 @@ class _ReaderGestureDetectorState extends State<_ReaderGestureDetector> {
   }
 
   void onMouseWheel(bool forward) {
+    if (HardwareKeyboard.instance.isControlPressed) {
+      return;
+    }
     if (context.reader.mode.key.startsWith('gallery')) {
       if (forward) {
         if (!context.reader.toNextPage()) {
@@ -265,5 +268,5 @@ class _DragListener {
   void Function(Offset offset)? onMove;
   void Function()? onEnd;
 
-  _DragListener({this.onStart, this.onMove, this.onEnd});
+  _DragListener({this.onMove, this.onEnd});
 }

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reorderable_grid_view/widgets/reorderable_builder.dart';
 import 'package:venera/components/components.dart';
@@ -15,6 +14,7 @@ import 'package:venera/foundation/local.dart';
 import 'package:venera/foundation/res.dart';
 import 'package:venera/network/download.dart';
 import 'package:venera/pages/comic_page.dart';
+import 'package:venera/pages/reader/reader.dart';
 import 'package:venera/utils/io.dart';
 import 'package:venera/utils/translations.dart';
 
@@ -95,7 +95,7 @@ class _FavoritesPageState extends State<FavoritesPage>  {
       barrierDismissible: true,
       fullscreenDialog: true,
       opaque: false,
-      barrierColor: Colors.black.withOpacity(0.36),
+      barrierColor: Colors.black.toOpacity(0.36),
       pageBuilder: (context, animation, secondary) {
         return Align(
           alignment: Alignment.centerLeft,
@@ -153,14 +153,14 @@ class _FavoritesPageState extends State<FavoritesPage>  {
       );
     }
     if (!isNetwork) {
-      return _LocalFavoritesPage(folder: folder!, key: Key(folder!));
+      return _LocalFavoritesPage(folder: folder!, key: PageStorageKey("local_$folder"));
     } else {
       var favoriteData = getFavoriteDataOrNull(folder!);
       if (favoriteData == null) {
         folder = null;
         return buildBody();
       } else {
-        return NetworkFavoritePage(favoriteData, key: Key(folder!));
+        return NetworkFavoritePage(favoriteData, key: PageStorageKey("network_$folder"));
       }
     }
   }

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:isolate';
 
 import 'package:venera/foundation/app.dart';
 import 'package:venera/foundation/comic_type.dart';
@@ -63,7 +62,7 @@ abstract class CBZ {
     var cache = Directory(FilePath.join(App.cachePath, 'cbz_import'));
     if (cache.existsSync()) cache.deleteSync(recursive: true);
     cache.createSync();
-    await Isolate.run(() => ZipFile.openAndExtract(file.path, cache.path));
+    await ZipFile.openAndExtractAsync(file.path, cache.path, 4);
     var metaDataFile = File(FilePath.join(cache.path, 'metadata.json'));
     ComicMetaData? metaData;
     if (metaDataFile.existsSync()) {
@@ -104,14 +103,14 @@ abstract class CBZ {
       FilePath.join(LocalManager().path, sanitizeFileName(metaData.title)),
     );
     dest.createSync();
-    coverFile.copy(
-        FilePath.join(dest.path, 'cover.${coverFile.path.split('.').last}'));
+    coverFile.copyMem(
+        FilePath.join(dest.path, 'cover.${coverFile.extension}'));
     if (metaData.chapters == null) {
       for (var i = 0; i < files.length; i++) {
         var src = files[i];
         var dst = File(
             FilePath.join(dest.path, '${i + 1}.${src.path.split('.').last}'));
-        await src.copy(dst.path);
+        await src.copyMem(dst.path);
       }
     } else {
       dest.createSync();
@@ -129,7 +128,7 @@ abstract class CBZ {
           var src = chapter.value[i];
           var dst = File(FilePath.join(
               chapterDir.path, '${i + 1}.${src.path.split('.').last}'));
-          await src.copy(dst.path);
+          await src.copyMem(dst.path);
         }
       }
     }
@@ -142,10 +141,9 @@ abstract class CBZ {
       directory: dest.name,
       chapters: cpMap,
       downloadedChapters: cpMap?.keys.toList() ?? [],
-      cover: 'cover.${coverFile.path.split('.').last}',
+      cover: 'cover.${coverFile.extension}',
       createdAt: DateTime.now(),
     );
-    LocalManager().add(comic);
     await cache.delete(recursive: true);
     return comic;
   }
@@ -164,7 +162,7 @@ abstract class CBZ {
         var dstName =
             '${i.toString().padLeft(width, '0')}.${image.split('.').last}';
         var dst = File(FilePath.join(cache.path, dstName));
-        await src.copy(dst.path);
+        await src.copyMem(dst.path);
         i++;
       }
     } else {
@@ -187,18 +185,18 @@ abstract class CBZ {
       }
       int i = 1;
       for (var image in allImages) {
-        var src = openFilePlatform(image);
+        var src = File(image);
         var width = allImages.length.toString().length;
         var dstName =
             '${i.toString().padLeft(width, '0')}.${image.split('.').last}';
         var dst = File(FilePath.join(cache.path, dstName));
-        await src.copy(dst.path);
+        await src.copyMem(dst.path);
         i++;
       }
     }
     var cover = comic.coverFile;
     await cover
-        .copy(FilePath.join(cache.path, 'cover.${cover.path.split('.').last}'));
+        .copyMem(FilePath.join(cache.path, 'cover.${cover.path.split('.').last}'));
     await File(FilePath.join(cache.path, 'metadata.json')).writeAsString(
       jsonEncode(
         ComicMetaData(
@@ -209,13 +207,13 @@ abstract class CBZ {
         ).toJson(),
       ),
     );
-    var cbz = File(FilePath.join(App.cachePath, '${comic.title}.cbz'));
+    var cbz = File(FilePath.join(App.cachePath, sanitizeFileName('${comic.title}.cbz')));
     await _compress(cache.path, cbz.path);
     cache.deleteSync(recursive: true);
     return cbz;
   }
 
   static _compress(String src, String dst) async {
-    await Isolate.run(() => ZipFile.compressFolder(src, dst));
+    await ZipFile.compressFolderAsync(src, dst, 4);
   }
 }

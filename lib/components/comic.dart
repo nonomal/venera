@@ -43,7 +43,7 @@ class ComicTile extends StatelessWidget {
     var renderBox = context.findRenderObject() as RenderBox;
     var size = renderBox.size;
     var location = renderBox.localToGlobal(
-      Offset(size.width / 2, size.height / 2),
+      Offset((size.width - 242) / 2, size.height / 2),
     );
     showMenu(location, context);
   }
@@ -77,7 +77,7 @@ class ComicTile extends StatelessWidget {
           icon: Icons.stars_outlined,
           text: 'Add to favorites'.tl,
           onClick: () {
-            addFavorite(comic);
+            addFavorite([comic]);
           },
         ),
         MenuEntry(
@@ -144,7 +144,7 @@ class ComicTile extends StatelessWidget {
                 if (history != null)
                   Container(
                     height: 24,
-                    color: Colors.blue.withOpacity(0.9),
+                    color: Colors.blue.toOpacity(0.9),
                     constraints: const BoxConstraints(minWidth: 24),
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: CustomPaint(
@@ -163,7 +163,9 @@ class ComicTile extends StatelessWidget {
   Widget buildImage(BuildContext context) {
     ImageProvider image;
     if (comic is LocalComic) {
-      image = FileImage((comic as LocalComic).coverFile);
+      image = LocalComicImageProvider(comic as LocalComic);
+    } else if (comic is History) {
+      image = HistoryImageProvider(comic as History);
     } else if (comic.sourceKey == 'local') {
       var localComic = LocalManager().find(comic.id, ComicType.local);
       if (localComic == null) {
@@ -291,7 +293,7 @@ class ComicTile extends StatelessWidget {
                                     Radius.circular(10.0),
                                   ),
                                   child: Container(
-                                    color: Colors.black.withOpacity(0.5),
+                                    color: Colors.black.toOpacity(0.5),
                                     child: Padding(
                                       padding:
                                           const EdgeInsets.fromLTRB(8, 6, 8, 6),
@@ -473,7 +475,7 @@ class _ComicDescription extends StatelessWidget {
             subtitle,
             style: TextStyle(
                 fontSize: 10.0,
-                color: context.colorScheme.onSurface.withOpacity(0.7)),
+                color: context.colorScheme.onSurface.toOpacity(0.7)),
             maxLines: 1,
             softWrap: true,
             overflow: TextOverflow.ellipsis,
@@ -778,7 +780,7 @@ class _SliverGridComics extends StatelessWidget {
             duration: const Duration(milliseconds: 150),
             decoration: BoxDecoration(
               color: isSelected
-                  ? Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.72)
+                  ? Theme.of(context).colorScheme.secondaryContainer.toOpacity(0.72)
                   : null,
               borderRadius: BorderRadius.circular(12),
             ),
@@ -829,6 +831,8 @@ class ComicList extends StatefulWidget {
     this.trailingSliver,
     this.errorLeading,
     this.menuBuilder,
+    this.controller,
+    this.refreshHandlerCallback,
   });
 
   final Future<Res<List<Comic>>> Function(int page)? loadPage;
@@ -842,6 +846,10 @@ class ComicList extends StatefulWidget {
   final Widget? errorLeading;
 
   final List<MenuEntry> Function(Comic)? menuBuilder;
+
+  final ScrollController? controller;
+
+  final void Function(VoidCallback c)? refreshHandlerCallback;
 
   @override
   State<ComicList> createState() => ComicListState();
@@ -859,6 +867,51 @@ class ComicListState extends State<ComicList> {
   final Map<int, bool> _loading = {};
 
   String? _nextUrl;
+
+  Map<String, dynamic> get state => {
+    'maxPage': _maxPage,
+    'data': _data,
+    'page': _page,
+    'error': _error,
+    'loading': _loading,
+    'nextUrl': _nextUrl,
+  };
+
+  void restoreState(Map<String, dynamic>? state) {
+    if (state == null) {
+      return;
+    }
+    _maxPage = state['maxPage'];
+    _data.clear();
+    _data.addAll(state['data']);
+    _page = state['page'];
+    _error = state['error'];
+    _loading.clear();
+    _loading.addAll(state['loading']);
+    _nextUrl = state['nextUrl'];
+  }
+
+  void storeState() {
+    PageStorage.of(context).writeState(context, state);
+  }
+
+  void refresh() {
+    _data.clear();
+    _page = 1;
+    _maxPage = null;
+    _error = null;
+    _nextUrl = null;
+    _loading.clear();
+    storeState();
+    setState(() {});
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    restoreState(PageStorage.of(context).readState(context));
+    widget.refreshHandlerCallback?.call(refresh);
+  }
 
   void remove(Comic c) {
     if (_data[_page] == null || !_data[_page]!.remove(c)) {
@@ -1007,15 +1060,20 @@ class ComicListState extends State<ComicList> {
           while (_data[page] == null) {
             await _fetchNext();
           }
-          setState(() {});
+          if(mounted) {
+            setState(() {});
+          }
         } catch (e) {
-          setState(() {
-            _error = e.toString();
-          });
+          if(mounted) {
+            setState(() {
+              _error = e.toString();
+            });
+          }
         }
       }
     } finally {
       _loading[page] = false;
+      storeState();
     }
   }
 
@@ -1064,6 +1122,8 @@ class ComicListState extends State<ComicList> {
       );
     }
     return SmoothCustomScrollView(
+      key: const PageStorageKey('scroll'),
+      controller: widget.controller,
       slivers: [
         if (widget.leadingSliver != null) widget.leadingSliver!,
         if (_maxPage != 1) _buildSliverPageSelector(),

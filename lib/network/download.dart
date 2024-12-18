@@ -146,14 +146,19 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
 
   String? _cover;
 
+  /// All images to download, key is chapter name
   Map<String, List<String>>? _images;
 
+  /// Downloaded image count
   int _downloadedCount = 0;
 
+  /// Total image count
   int _totalCount = 0;
 
+  /// Current downloading image index
   int _index = 0;
 
+  /// Current downloading chapter, index of [_images]
   int _chapter = 0;
 
   var tasks = <int, _ImageDownloadWrapper>{};
@@ -180,10 +185,10 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
       if (comic!.chapters != null) {
         saveTo = Directory(FilePath.join(
           path!,
-          comic!.chapters!.keys.elementAt(_chapter),
+          _images!.keys.elementAt(_chapter),
         ));
         if (!saveTo.existsSync()) {
-          saveTo.createSync();
+          saveTo.createSync(recursive: true);
         }
       } else {
         saveTo = Directory(path!);
@@ -235,20 +240,21 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
     }
 
     if (path == null) {
-      var dir = await LocalManager().findValidDirectory(
-        comicId,
-        comicType,
-        comic!.title,
-      );
-      if (!(await dir.exists())) {
-        try {
+      try {
+        var dir = await LocalManager().findValidDirectory(
+          comicId,
+          comicType,
+          comic!.title,
+        );
+        if (!(await dir.exists())) {
           await dir.create();
-        } catch (e) {
-          _setError("Error: $e");
-          return;
         }
+        path = dir.path;
+      } catch (e, s) {
+        Log.error("Download", e.toString(), s);
+        _setError("Error: $e");
+        return;
       }
-      path = dir.path;
     }
 
     await LocalManager().saveCurrentDownloadingTasks();
@@ -266,11 +272,13 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
           throw "Failed to download cover";
         }
         var fileType = detectFileType(data);
-        var file = File(FilePath.join(path!, "cover${fileType.ext}"));
+        var file =
+            File(FilePath.join(path!, "cover${fileType.ext}"));
         file.writeAsBytesSync(data);
         return "file://${file.path}";
       });
       if (res.error) {
+        Log.error("Download", res.errorMessage!);
         _setError("Error: ${res.errorMessage}");
         return;
       } else {
@@ -294,6 +302,7 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
           return;
         }
         if (res.error) {
+          Log.error("Download", res.errorMessage!);
           _setError("Error: ${res.errorMessage}");
           return;
         } else {
@@ -323,6 +332,7 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
             return;
           }
           if (res.error) {
+            Log.error("Download", res.errorMessage!);
             _setError("Error: ${res.errorMessage}");
             return;
           } else {
@@ -347,6 +357,7 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
           return;
         }
         if (task.error != null) {
+          Log.error("Download", task.error.toString());
           _setError("Error: ${task.error}");
           return;
         }
@@ -375,7 +386,6 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
     _message = message;
     notifyListeners();
     stopRecorder();
-    Log.error("Download", message);
   }
 
   @override
@@ -448,7 +458,8 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
       }).toList(),
       directory: Directory(path!).name,
       chapters: comic!.chapters,
-      cover: File(_cover!.split("file://").last).uri.pathSegments.last,
+      cover:
+          File(_cover!.split("file://").last).name,
       comicType: ComicType(source.key.hashCode),
       downloadedChapters: chapters ?? [],
       createdAt: DateTime.now(),
@@ -721,13 +732,12 @@ class ArchiveDownloadTask extends DownloadTask {
         _currentBytes = status.downloadedBytes;
         _expectedBytes = status.totalBytes;
         _message =
-        "${bytesToReadableString(_currentBytes)}/${bytesToReadableString(_expectedBytes)}";
+            "${bytesToReadableString(_currentBytes)}/${bytesToReadableString(_expectedBytes)}";
         _speed = status.bytesPerSecond;
         isDownloaded = status.isFinished;
         notifyListeners();
       }
-    }
-    catch(e) {
+    } catch (e) {
       _setError("Error: $e");
       return;
     }

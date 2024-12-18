@@ -92,7 +92,7 @@ class _Settings with ChangeNotifier {
   final _data = <String, dynamic>{
     'comicDisplayMode': 'detailed', // detailed, brief
     'comicTileScale': 1.00, // 0.75-1.25
-    'color': 'blue', // red, pink, purple, green, orange, blue
+    'color': 'system', // red, pink, purple, green, orange, blue
     'theme_mode': 'system', // light, dark, system
     'newFavoriteAddTo': 'end', // start, end
     'moveFavoriteAfterRead': 'none', // none, end, start
@@ -106,6 +106,7 @@ class _Settings with ChangeNotifier {
     'defaultSearchTarget': null,
     'autoPageTurningInterval': 5, // in seconds
     'readerMode': 'galleryLeftToRight', // values of [ReaderMode]
+    'readerScreenPicNumber': 1, // 1 - 5
     'enableTapToTurnPages': true,
     'enablePageAnimation': true,
     'language': 'system', // system, zh-CN, zh-TW, en-US
@@ -121,6 +122,7 @@ class _Settings with ChangeNotifier {
     'enableClockAndBatteryInfoInReader': true,
     'ignoreCertificateErrors': false,
     'authorizationRequired': false,
+    'onClickFavorite': 'viewDetail', // viewDetail, read
   };
 
   operator [](String key) {
